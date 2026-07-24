@@ -8,12 +8,17 @@
 
 int main(int argc, char *argv[]){
     pid_t pid;
-    char *program = argv[0];
-
+    char *program = argv[1];
     pid = fork(); 
     if ( pid==0 ){
         ptrace(PT_TRACE_ME);
-        execve(program, "", "");
+        printf("%s\n",program);
+        char *env[] = { NULL }; 
+        char *args[] = {program, NULL};
+        execve(program, args, env);
+
+        perror("execve failed");
+        exit(EXIT_FAILURE);
     } else {
         int status;
         waitpid(pid, &status, WUNTRACED);
