@@ -8,8 +8,30 @@
 #include <sys/user.h>
 #include <string.h>
 
+pid_t pid;
+struct user_regs_struct regs;
+
+
+void program_flow(int status){
+    char input_buffer[256];
+    while (1){
+        printf("[Debugger] enter command: ");
+        scanf("%255s", input_buffer);
+
+        if (strcmp(input_buffer,"nexti") == 0){ 
+            ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL);
+            waitpid(pid, &status, WUNTRACED);
+            ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+            printf("[Debugger] rip:0x%llx\n",regs.rip);
+        } else if (strcmp(input_buffer,"continue") == 0){
+            ptrace(PTRACE_CONT, pid, NULL, NULL);
+            break;
+        }
+    }
+}
+
 int main(int argc, char *argv[]){
-    pid_t pid;
+    
     char input_buffer[256]; 
     char *program = NULL;
     if ( argc > 1 ){
@@ -32,29 +54,18 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     } else {
         int status;
-        struct user_regs_struct regs;
         waitpid(pid, &status, WUNTRACED);
         if (WIFSTOPPED(status) && WSTOPSIG(status) == SIGTRAP){
             printf("[Debugger] process is stopped\n");
             ptrace(PTRACE_GETREGS, pid, NULL, &regs);
-            printf("[Debugger] rip:0x%llx\n",regs.rip);
-            while (1){
-                printf("[Debugger] enter command: ");
-                scanf("%255s", input_buffer);
-                if (strcmp(input_buffer,"nexti") == 0){ 
-                    ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL);
-                    waitpid(pid, &status, WUNTRACED);
-                    ptrace(PTRACE_GETREGS, pid, NULL, &regs);
-                    printf("[Debugger] rip:0x%llx\n",regs.rip);
-                }
-            }
-            
+            printf("[Debugger] rip:0x%llx\n",regs.rip);  
+            program_flow(status);
             printf("[Debugger] resuming execution...\n");
 
         }
 
 
-        //waitpid(pid, &status, 0);
+        waitpid(pid, &status, WUNTRACED);
         printf("[Debugger] Target process completed exit.\n");
     }
     return 0;
