@@ -5,10 +5,21 @@
 #include <sys/wait.h>
 #include <sys/ptrace.h>
 #include <signal.h>
+#include <sys/user.h>
+#include <string.h>
 
 int main(int argc, char *argv[]){
     pid_t pid;
-    char *program = argv[1];
+    char input_buffer[256]; 
+    char *program = NULL;
+    if ( argc > 1 ){
+        program = argv[1];
+    } else {
+        printf("[Debugger] Enter program name: ");
+        if ( scanf("%255s", input_buffer) == 1 ){
+            program = input_buffer;
+        } 
+    }
     pid = fork(); 
     if ( pid==0 ){
         ptrace(PT_TRACE_ME);
@@ -17,14 +28,34 @@ int main(int argc, char *argv[]){
         char *args[] = {program, NULL};
         execve(program, args, env);
 
-        perror("execve failed");
+        perror("error");
         exit(EXIT_FAILURE);
     } else {
         int status;
+        struct user_regs_struct regs;
         waitpid(pid, &status, WUNTRACED);
         if (WIFSTOPPED(status) && WSTOPSIG(status) == SIGTRAP){
-            printf("program is stopped");
+            printf("[Debugger] process is stopped\n");
+            ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+            printf("[Debugger] rip:0x%llx\n",regs.rip);
+            while (1){
+                printf("[Debugger] enter command: ");
+                scanf("%255s", input_buffer);
+                if (strcmp(input_buffer,"nexti") == 0){ 
+                    ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL);
+                    waitpid(pid, &status, WUNTRACED);
+                    ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+                    printf("[Debugger] rip:0x%llx\n",regs.rip);
+                }
+            }
+            
+            printf("[Debugger] resuming execution...\n");
+
         }
+
+
+        //waitpid(pid, &status, 0);
+        printf("[Debugger] Target process completed exit.\n");
     }
     return 0;
 }
