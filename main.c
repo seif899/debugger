@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <sys/user.h>
 #include <string.h>
+#include "breakpoint.h"
 
 pid_t pid;
 struct user_regs_struct regs;
@@ -26,6 +27,9 @@ void program_flow(int status){
         } else if (strcmp(input_buffer,"continue") == 0){
             ptrace(PTRACE_CONT, pid, NULL, NULL);
             break;
+        } else if (strcmp(input_buffer, "break") == 0){
+            printf("[Debugger] adress: ");
+
         }
     }
 }
