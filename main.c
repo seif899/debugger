@@ -8,10 +8,11 @@
 #include <sys/user.h>
 #include <string.h>
 #include "breakpoint.h"
+#include <inttypes.h>
 
 pid_t pid;
 struct user_regs_struct regs;
-
+Breakpoint *bp;
 
 void program_flow(int status){
     char input_buffer[256];
@@ -29,7 +30,10 @@ void program_flow(int status){
             break;
         } else if (strcmp(input_buffer, "break") == 0){
             printf("[Debugger] adress: ");
-
+            uintptr_t adress;
+            scanf("%" SCNxPTR, &adress);
+            bp->address = adress;
+            breakpoint_enable(pid, bp);
         }
     }
 }
@@ -60,6 +64,9 @@ int main(int argc, char *argv[]){
         int status;
         waitpid(pid, &status, WUNTRACED);
         if (WIFSTOPPED(status) && WSTOPSIG(status) == SIGTRAP){
+            if (bp->enabled){
+                
+            }
             printf("[Debugger] process is stopped\n");
             ptrace(PTRACE_GETREGS, pid, NULL, &regs);
             printf("[Debugger] rip:0x%llx\n",regs.rip);  
